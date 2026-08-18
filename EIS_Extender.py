@@ -32,8 +32,9 @@ def analyze(path):
     z = mag * np.exp(1j * np.radians(ph)) #Use complx  directly, we'll separate real and imaginary while saving
 
     if f.max() < MIN_FREQ_FRAC * CUTOFF_FREQ:
-        print(f"  Skipped: max frequency {f.max()/1e6:.2f} MHz < {MIN_FREQ_FRAC*CUTOFF_FREQ/1e6:.2f} MHz ({MIN_FREQ_FRAC:.0%} of CUTOFF_FREQ)")
-        return False
+        reason = f"max frequency {f.max()/1e6:.2f} MHz < {MIN_FREQ_FRAC*CUTOFF_FREQ/1e6:.2f} MHz ({MIN_FREQ_FRAC:.0%} of CUTOFF_FREQ)"
+        print(f"  Skipped: {reason}")
+        return reason
 
     #Initialise and sort
     m = f <= CUTOFF_FREQ
@@ -69,8 +70,9 @@ def analyze(path):
         fit_lb += FIT_LB_STEP
 
     if z_corr is None:
-        print(f"  Skipped: could not fit data for {p.name}")
-        return False
+        reason = "could not fit data"
+        print(f"  Skipped: {reason} for {p.name}")
+        return reason
 
     # Extrapolate RC model from f_max to 10 GHz 
     f_ex = np.logspace(np.log10(f[-1]), 10, int((10 - np.log10(f[-1])) * PPD) + 1)[1:]
@@ -87,15 +89,15 @@ def analyze(path):
     plt.xlabel("Z' (Ohms)"); plt.ylabel("-Z'' (Ohms)")
     plt.legend(); plt.grid()
     plt.savefig(p.with_suffix('.png')); plt.close()
-    return True
+    return None
 
 if __name__ == "__main__":
     root = tk.Tk(); root.withdraw()
     files = filedialog.askopenfilenames(title="Select CSV files", filetypes=[("CSV files", "*.csv")])
-    skipped = [f for f in files if not analyze(f)]
+    skipped = [(f, reason) for f in files if (reason := analyze(f))]
     if skipped:
         print(f"\nUnprocessed files ({len(skipped)}/{len(files)}):")
-        for f in skipped:
-            print(f"  - {Path(f).name}")
+        for f, reason in skipped:
+            print(f"  - {Path(f).name}: {reason}")
     elif files:
         print(f"\nAll {len(files)} file(s) processed successfully.")
